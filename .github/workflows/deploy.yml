@@ -1,8 +1,11 @@
-name: Deploy to GitHub Pages
+name: Deploy Security Review System
 
 on:
   push:
     branches: [main]
+    paths:
+      - "security-review-system/**"
+      - ".github/workflows/deploy.yml"
   workflow_dispatch:
 
 permissions:
@@ -17,6 +20,9 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: security-review-system
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,6 +32,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: security-review-system/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -39,7 +46,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: security-review-system/dist
 
   deploy:
     environment:
