@@ -46,6 +46,8 @@ Build command: npm run build
 Publish directory: dist
 ```
 
+GitHub Pages custom domain은 `srs.sanghak.kr`입니다. 이 값은 `public/CNAME`에 들어 있으며 빌드 시 `dist/CNAME`으로 복사됩니다.
+
 배포 도메인이 정해지면 Supabase에서 다음 설정도 갱신합니다.
 
 1. Authentication > URL Configuration > Site URL에 배포 URL을 입력합니다.
