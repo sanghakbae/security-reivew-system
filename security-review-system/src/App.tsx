@@ -133,14 +133,13 @@ async function sendReviewSubmittedNotification(
     `• 미흡 항목: ${failedItems.length}개`,
   ].join("\n");
 
-  const response = await fetch("/api/google-chat-webhook", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text }),
+  const client = requireSupabase();
+  const { error } = await client.functions.invoke("security-review-google-chat-webhook", {
+    body: { text },
   });
 
-  if (!response.ok) {
-    throw new Error(`Google Chat 알림 전송 실패 (${response.status})`);
+  if (error) {
+    throw new Error(`Google Chat 알림 전송 실패 (${error.message})`);
   }
 }
 
@@ -787,10 +786,36 @@ export default function App() {
 
   async function setReviewStatus(status: ReviewStatus) {
     if (!selectedReview || !profile) return;
+
     try {
       setSaving(true);
       setError(null);
       const client = requireSupabase();
+
+      if (status === "completed") {
+        const [{ data: latestItems, error: itemError }, { data: latestGroups, error: groupError }] = await Promise.all([
+          client
+            .from("sr_review_items")
+            .select("*, security_requirements:sr_security_requirements(*)")
+            .eq("review_id", selectedReview.id),
+          client.from("sr_review_groups").select("*").eq("review_id", selectedReview.id),
+        ]);
+
+        if (itemError) throw itemError;
+        if (groupError) throw groupError;
+
+        const groupMap = new Map(((latestGroups ?? []) as ReviewGroup[]).map((group) => [group.category, group]));
+        const missingReviewerResults = ((latestItems ?? []) as ReviewItem[]).filter((item) => {
+          const group = groupMap.get(item.security_requirements.category);
+          return group?.is_applicable === true && !item.reviewer_result;
+        });
+
+        if (missingReviewerResults.length) {
+          setError(`관리자 판정이 완료되지 않은 항목이 ${missingReviewerResults.length}개 있습니다.`);
+          return;
+        }
+      }
+
       const { error: reviewError } = await client
         .from("sr_reviews")
         .update({
@@ -1694,10 +1719,10 @@ function ReviewReport({ review, items, groups }: { review: Review; items: Review
   const applicableItems = items.filter(
     (item) => groupMap.get(item.security_requirements.category)?.is_applicable === true,
   );
-  const passedItems = applicableItems.filter((item) => item.result === "pass");
-  const failedItems = applicableItems.filter((item) => item.result === "fail");
-  const notApplicableItems = applicableItems.filter((item) => item.result === "na");
-  const unresolvedItems = applicableItems.filter((item) => !item.result);
+  const passedItems = applicableItems.filter((item) => item.reviewer_result === "pass");
+  const failedItems = applicableItems.filter((item) => item.reviewer_result === "fail");
+  const notApplicableItems = applicableItems.filter((item) => item.reviewer_result === "na");
+  const unresolvedItems = applicableItems.filter((item) => !item.reviewer_result);
   const applicableGroups = groups.filter((group) => group.is_applicable === true);
   const skippedGroups = groups.filter((group) => group.is_applicable === false);
 
@@ -1762,7 +1787,7 @@ function ReviewReport({ review, items, groups }: { review: Review; items: Review
                 <span className="code">{item.security_requirements.code}</span>
                 <div>
                   <strong>{item.security_requirements.title}</strong>
-                  <p>{item.non_compliance_reason || "미흡 사유가 작성되지 않았습니다."}</p>
+                  <p>{item.reviewer_comment || item.non_compliance_reason || "검토 의견이 작성되지 않았습니다."}</p>
                 </div>
               </article>
             ))}

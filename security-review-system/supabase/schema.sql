@@ -77,7 +77,9 @@ alter table public.sr_reviews
   add column if not exists project_owner text,
   add column if not exists development_type text,
   add column if not exists service_scope text,
-  add column if not exists launch_date date;
+  add column if not exists launch_date date,
+  add column if not exists due_date date,
+  add column if not exists reviewed_at timestamptz;
 
 create table if not exists public.sr_review_groups (
   id uuid primary key default gen_random_uuid(),
@@ -109,7 +111,8 @@ create table if not exists public.sr_review_items (
 );
 
 alter table public.sr_review_items
-  add column if not exists reviewer_result public.review_result;
+  add column if not exists reviewer_result public.review_result,
+  add column if not exists reviewer_comment text;
 
 create index if not exists reviews_requester_id_idx on public.sr_reviews(requester_id);
 create index if not exists reviews_status_idx on public.sr_reviews(status);

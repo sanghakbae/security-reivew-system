@@ -19,7 +19,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-`.env.local`에는 Supabase 프로젝트의 URL, anon key, Google Chat 웹훅 URL을 입력합니다.
+`.env.local`에는 Supabase 프로젝트의 URL과 anon key를 입력합니다. Google Chat 웹훅 URL은 브라우저 번들에 넣지 않고 Supabase Edge Function secret으로 설정합니다.
 
 ## Environment Variables
 
@@ -29,12 +29,12 @@ npm run dev
 | --- | --- | --- |
 | `VITE_SUPABASE_URL` | 예 | Supabase 프로젝트 URL입니다. 예: `https://xxxxx.supabase.co` |
 | `VITE_SUPABASE_ANON_KEY` | 예 | Supabase Project Settings > API의 anon public key입니다. |
-| `GOOGLE_CHAT_WEBHOOK_URL` | 선택 | 검토 요청 제출 시 Google Chat으로 알림을 보내는 웹훅 전체 URL입니다. |
+| `SECURITY_REVIEW_GOOGLE_CHAT_WEBHOOK_URL` | 선택 | Supabase Edge Function secret으로 설정합니다. 검토 요청 제출 시 Google Chat으로 알림을 보내는 이 앱 전용 웹훅 전체 URL입니다. |
 
 주의사항:
 
 - `VITE_` prefix가 붙은 값은 브라우저 번들에 포함됩니다. Supabase `service_role` key는 절대 넣지 마세요.
-- `GOOGLE_CHAT_WEBHOOK_URL`은 저장소에 커밋하지 말고 배포 환경변수 또는 로컬 `.env.local`에만 넣습니다.
+- `SECURITY_REVIEW_GOOGLE_CHAT_WEBHOOK_URL`은 저장소에 커밋하지 말고 Supabase Edge Function secret에만 넣습니다.
 - `.env.local`, `dist`, `node_modules`, Supabase 로컬 메타 파일은 `.gitignore`로 제외되어 있습니다.
 
 ## 배포 설정
@@ -60,6 +60,12 @@ Publish directory: dist
 4. Authentication > Providers에서 Google provider를 활성화합니다.
 5. Authentication > URL Configuration에 로컬 개발 주소와 배포 주소를 등록합니다.
 6. 첫 admin 사용자는 SQL Editor에서 직접 승격합니다.
+7. Google Chat 알림을 사용할 경우 Edge Function을 배포하고 secret을 설정합니다.
+
+```bash
+supabase functions deploy security-review-google-chat-webhook
+supabase secrets set SECURITY_REVIEW_GOOGLE_CHAT_WEBHOOK_URL='https://chat.googleapis.com/v1/spaces/...'
+```
 
 ```sql
 update public.sr_profiles
